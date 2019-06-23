@@ -1,0 +1,14 @@
+{
+    "name": "sfw2/download",
+    "type": "library",
+    "license": "GNU AFFERO GENERAL PUBLIC LICENSE Version 3",
+
+    "require": {
+        "php": "^7.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "SFW2\\Download\\": "src/"
+        }
+    }
+}
