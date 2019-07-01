@@ -1,0 +1,122 @@
+<?php
+
+/**
+ *  SFW2 - SimpleFrameWork
+ *
+ *  Copyright (C) 2018  Stefan Paproth
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program. If not, see <http://www.gnu.org/licenses/agpl.txt>.
+ *
+ */
+
+?>
+<h1>Download</h1>
+<p>
+    Auf dieser Seite findest Du Dokumente zum herunterladen.
+</p>
+<input id="path" type="hidden" name="path" value="/verein/allgemein/download" />
+<div class="alert alert-dark" role="alert">
+    Ich bemühe mich, die Seite stets aktuell zu halten. Solltest
+    Du dennoch feststellen, dass ein Dokument veraltet ist oder
+    Fehler enthält, dann gib mir bitte <?php echo($this->mailaddr);?>
+</div>
+<?php if(!count($this->entries) && !$this->editable):?>
+<div class="alert alert-dark" role="alert">
+    <strong>Anmerkung:</strong><p>Keine Daten vorhanden!</p>
+</div>
+<?php endif; ?>
+<?php foreach($this->entries as $k => $v): ?>
+<div style="min-height: 44px;"></div>
+<table class="text-nowrap table-sm table table-striped table-hover">
+    <thead class="thead-dark">
+        <tr>
+            <th scope="col" colspan="2"><?php echo($k); ?></th>
+            <th scope="col" style="text-align: right">
+                <?php if($this->permission->createAllowed()): ?>
+                <form class="noshow">
+                    <div class="fileuploadArea"></div>
+                    <div class="row">
+                        <label for="title" class="col-sm-3 col-form-label">Beschreibung</label>
+                        <div class="col-sm-8">
+                            <input
+                                type="text"
+                                class="form-control form-control-sm"
+                                placeholder="Hier kommt die Beschreibung hin..."
+                                maxlength="100"
+                                title="Gib hier bitte eine kurze Beschreibung der Datei ein."
+                                id="title"
+                                name="title"
+                                value=""
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <label for="division" class="col-sm-3 col-form-label">Ressort</label>
+                        <div class="col-sm-4">
+                            <select
+                                class="custom-select form-control form-control-sm"
+                                id="division"
+                                name="division"
+                            >
+                                <?php foreach($this->divisions as $id => $name): ?>
+                                <option
+                                    value="<?php echo($id);?>"
+                                    <?php if($name == $k): ?>selected<?php endif;?>
+                                >
+                                    <?php echo($name);?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+                <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#createDialogModal">Neuer Eintrag</button>
+                <?php endif;?>
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach($v as $item): ?>
+        <tr id="<?php echo($item['id']);?>" title="<?php echo($item['filename']);?> <?php echo($item['addFileInfo']); ?>">
+            <td style="width: 30px;">
+                <img alt="" src="<?php echo($item['icon']);?>" />
+            </td>
+            <td>
+                <a href="<?php echo($item['href']);?>" id="title_<?php echo($item['id']);?>">
+                    <?php echo($item['description']);?>
+                </a>
+            </td>
+            <td style="width: 100px;">
+                <?php if(!$item['autoGen'] && ($this->permission->deleteAllAllowed() || ($this->permission->deleteOwnAllowed() && $item['ownEntry']))): ?>
+                <button
+                    type="button"
+                    class="btn btn-danger btn-sm"
+                    data-toggle="modal"
+                    data-target="#deleteDialogModal"
+                    data-item-del-url="<?php echo($this->getCurrentPath()); ?>"
+                    data-item-id="<?php echo($item['id']);?>"
+                >
+                    löschen
+                </button>
+                <?php endif; ?>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    </tbody>
+</table>
+<?php endforeach; ?>
+<div class="modificationDate">
+    Stand: <time pubdate="pubdate"><?php echo($this->modificationDate); ?></time>
+</div>
