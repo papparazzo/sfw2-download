@@ -26,13 +26,16 @@
     Auf dieser Seite findest Du Dokumente zum herunterladen.
 </p>
 <input id="path" type="hidden" name="path" value="/verein/allgemein/download" />
-<div class="alert alert-dark" role="alert">
-    Ich bemühe mich, die Seite stets aktuell zu halten. Solltest
+<div class="alert alert-success" role="alert">
+    <strong>Anmerkung</strong>
+    <p>
+    Es wird versucht die Seite stets aktuell zu halten. Solltest
     Du dennoch feststellen, dass ein Dokument veraltet ist oder
-    Fehler enthält, dann gib mir bitte <?php echo($this->mailaddr);?>
+    Fehler enthält dann gib mir bitte <?php echo($this->mailaddr);?>
+    </p>
 </div>
 <?php if(!count($this->entries) && !$this->editable):?>
-<div class="alert alert-dark" role="alert">
+<div class="alert alert-info" role="alert">
     <strong>Anmerkung:</strong><p>Keine Daten vorhanden!</p>
 </div>
 <?php endif; ?>
