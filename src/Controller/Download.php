@@ -130,12 +130,6 @@ class Download extends AbstractController {
         return new File($this->config->getVal('path', 'data'), $result['Token'], $result['Name'] /*,bool $isTemp = false*/);
     }
 
-
-
-
-
-
-
     protected function getLastModificationDate() : string {
         $stmt = "SELECT `media`.`CreationDate` FROM `{TABLE_PREFIX}_media` AS `media` ORDER BY `media`.`CreationDate` DESC";
         return $this->database->selectSingle($stmt);
@@ -160,7 +154,13 @@ class Download extends AbstractController {
         return new Content();
     }
 
-    private function insertFile(&$tmp) {
+
+
+    
+
+
+    public function create() {
+
         $method = filter_input(INPUT_SERVER, 'REQUEST_METHOD', FILTER_VALIDATE_INT);
 
         if(strtolower($method) != 'post') {
@@ -197,29 +197,11 @@ class Download extends AbstractController {
 
         $stmt =
             "INSERT INTO `{TABLE_PREFIX}_media` " .
-            "SET `Token` = '%s', " .
-            "`UserId` = '%s', " .
-            "`Name` = '%s', " .
-            "`Description` = '%s', " .
-            "`DivisionId` = '%s', " .
-            "`CreationDate` = NOW(), " .
-            "`ActionHandler` = '', " .
-            "`Path` = '%s', " .
-            "`FileType` = '%s', " .
-            "`Deleted` = '0', " .
-            "`Autogen` = '0'";
+            "SET `Token` = '%s', `UserId` = '%s', `Name` = '%s', `Description` = '%s', `DivisionId` = '%s', `CreationDate` = NOW(), " .
+            "`ActionHandler` = '', `Path` = '%s', `FileType` = '%s', `Deleted` = '0', `Autogen` = '0'";
 
         $this->database->insert(
-            $stmt,
-            array(
-                $token,
-                $this->user->getUserId(),
-                $file['name'],
-                $tmp['title'],
-                $tmp['section'],
-                $path,
-                $this->getFileType($path . $token)
-            )
+            $stmt, [$token, $this->user->getUserId(), $file['name'], $tmp['title'], $tmp['section'], $path, $this->getFileType($path . $token)]
         );
 
         $tmp['title'  ] = '';
@@ -271,7 +253,7 @@ return; # FIXME
                 return 'zip';
         }
 
-        if(strstr($mi,'text/')) {
+        if(strstr($mi, 'text/')) {
             return 'txt';
         }
         return 'ukn';
