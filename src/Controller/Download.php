@@ -63,7 +63,6 @@ class Download extends AbstractController {
         $this->user = $user;
         $this->title = $title;
         $this->config = $config;
-        $this->clearTmpFolder();
     }
 
     public function index($all = false) : Content {
@@ -127,7 +126,16 @@ class Download extends AbstractController {
         if(empty($result)) {
             throw new ResolverException("no entry found for id <$token>", ResolverException::NO_PERMISSION);
         }
-        return new File($this->config->getVal('path', 'data'), $result['Token'], $result['Name'] /*,bool $isTemp = false*/);
+
+        $isTempFile = false;
+
+        if($result['ActionHandler'] != '') {
+            $isTempFile = true;
+            $handler = new \SFW2\Download\Helper\ContactListHandler();
+            $handler->createFile();
+        }
+
+        return new File($this->config->getVal('path', 'data'), $result['Token'], $result['Name'], false);
     }
 
     protected function getLastModificationDate() : string {
@@ -135,7 +143,7 @@ class Download extends AbstractController {
         return $this->database->selectSingle($stmt);
     }
 
-    public function delete($all = false) {
+    public function delete($all = false) : Content {
         $entryId = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
         if($entryId === false) {
             throw new ResolverException("invalid data given", ResolverException::INVALID_DATA_GIVEN);
@@ -156,7 +164,7 @@ class Download extends AbstractController {
 
 
 
-    
+
 
 
     public function create() {
@@ -211,21 +219,6 @@ class Download extends AbstractController {
         return true;
     }
 
-    protected function clearTmpFolder() {
-return; # FIXME
-        $dir = dir(SFW_TMP_PATH);
-        while(false !== ($file = $dir->read())) {
-            if($file  == '.' || $file == '..' || $file == '.htaccess') {
-                continue;
-            }
-
-            if(time() - filemtime(SFW_TMP_PATH . $file) > 60 * 60) {
-                unlink(SFW_TMP_PATH . $file);
-            }
-        }
-        $dir->close();
-    }
-
     protected function getFileType($file) {
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
 
@@ -262,13 +255,12 @@ return; # FIXME
     protected function getAdditionalFileInfo($row) {
         $name = substr($row['FirstName'], 0, 1)  . '. ' . $row['LastName'];
 
-        $date = new DateTime($row['CreationDate'], new DateTimeZone('Europe/Berlin'));
-        $date = $this->vars['modificationDate'] = strftime('%d. %b. %G', $date->getTimestamp());
-
-
-        if($date != '') {
-            return '(' .  $name . '; Stand: ' . $date . ')';
+        if($row['CreationDate'] === null || $row['CreationDate'] == '0000-00-00') {
+            $date = '[unbekannt]';
+        } else {
+            $date = new DateTime($row['CreationDate'], new DateTimeZone('Europe/Berlin'));
+            $date = strftime('%d. %b. %G', $date->getTimestamp());
         }
-        return '(' . $name . ')';
+        return '(' .  $name . '; Stand: ' . $date . ')';
     }
 }
