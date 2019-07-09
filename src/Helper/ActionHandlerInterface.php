@@ -24,5 +24,5 @@ namespace SFW2\Download\Helper;
 
 interface ActionHandlerInterface {
 
-    public function createFile();
+    public function createFile(string $path, string $fileName, string $token);
 }

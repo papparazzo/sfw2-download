@@ -117,7 +117,7 @@ class Download extends AbstractController {
         $token = filter_input(INPUT_GET, 'token');
 
         $stmt =
-            "SELECT `media`.`Token`, `media`.`Name`, `media`.`FileType`, `media`.`Autogen` " .
+            "SELECT `Token`, `Name`, `FileType`, `Autogen`, `ActionHandler` " .
             "FROM `{TABLE_PREFIX}_media` AS `media` " .
             "WHERE `media`.`Token` = '%s' ";
 
@@ -131,8 +131,9 @@ class Download extends AbstractController {
 
         if($result['ActionHandler'] != '') {
             $isTempFile = true;
-            $handler = new \SFW2\Download\Helper\ContactListHandler();
-            $handler->createFile();
+            $class = '\\' . $result['ActionHandler'];
+            $handler = new $class($this->database); // TODO: generate object per di-container...
+            $handler->createFile($this->config->getVal('path', 'data'), $result['Name'], $result['Token']);
         }
 
         return new File($this->config->getVal('path', 'data'), $result['Token'], $result['Name'], false);
