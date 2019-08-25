@@ -1,0 +1,26 @@
+<tr id="{{formid}}_recordset_{{id}}" title="{{filename}} {{addFileInfo}}">
+    <td style="width: 30px;">
+        <img alt="" src="<?php echo($item['icon']);?>" />
+    </td>
+    <td>
+        <a href="<?php echo($item['href']);?>" id="title_<?php echo($item['id']);?>">
+            <?php echo($item['description']);?>
+        </a>
+    </td>
+    <td style="width: 100px;">
+        {{#if deleteAllowed}}
+        <?php if(!$item['autoGen'] && ($this->permission->deleteAllAllowed() || ($this->permission->deleteOwnAllowed() && $item['ownEntry']))): ?>
+        <button
+            type="button"
+            class="btn btn-danger btn-sm"
+            data-toggle="modal"
+            data-target="#deleteDialogModal"
+            data-url="{{url}}"
+            data-item-id="{{id}}"
+            data-form-id="{{formid}}"
+        >löschen</button>
+        {{/if}}
+        <?php endif; ?>
+    </td>
+</tr>
+

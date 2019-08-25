@@ -139,11 +139,6 @@ class Download extends AbstractController {
         return new File($this->config->getVal('path', 'data'), $result['Token'], $result['Name'], false);
     }
 
-    protected function getLastModificationDate() : string {
-        $stmt = "SELECT `media`.`CreationDate` FROM `{TABLE_PREFIX}_media` AS `media` ORDER BY `media`.`CreationDate` DESC";
-        return $this->database->selectSingle($stmt);
-    }
-
     public function delete($all = false) : Content {
         $entryId = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
         if($entryId === false) {
@@ -161,6 +156,11 @@ class Download extends AbstractController {
         }
 
         return new Content();
+    }
+
+    protected function getLastModificationDate() : string {
+        $stmt = "SELECT `media`.`CreationDate` FROM `{TABLE_PREFIX}_media` AS `media` ORDER BY `media`.`CreationDate` DESC";
+        return $this->database->selectSingle($stmt);
     }
 
 
