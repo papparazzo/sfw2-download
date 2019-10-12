@@ -26,12 +26,15 @@ use SFW2\Routing\AbstractController;
 use SFW2\Routing\Result\Content;
 use SFW2\Routing\Result\File;
 use SFW2\Routing\Resolver\ResolverException;
-use SFW2\Controllers\Widget\Obfuscator\EMail;
 use SFW2\Authority\User;
 use SFW2\Controllers\Controller\Helper\GetDivisionTrait;
 
 use SFW2\Core\Config;
 use SFW2\Core\Database;
+
+use SFW2\Validator\Ruleset;
+use SFW2\Validator\Validator;
+use SFW2\Validator\Validators\IsNotEmpty;
 
 use DateTime;
 use DateTimeZone;
@@ -51,66 +54,69 @@ class Download extends AbstractController {
     protected $user;
 
     /**
-     * @var Config
+     * @var string
      */
-    protected $config;
-
     protected $title;
 
-    public function __construct(int $pathId, Database $database, Config $config, User $user, string $title = null) {
+    /**
+     * @var string
+     */
+    protected $path;
+
+    public function __construct(int $pathId, Database $database, Config $config, User $user, string $title = '') {
         parent::__construct($pathId);
         $this->database = $database;
         $this->user = $user;
         $this->title = $title;
-        $this->config = $config;
+        $this->path = $config->getVal('path', 'data') . DIRECTORY_SEPARATOR . $this->pathId . DIRECTORY_SEPARATOR;
     }
 
     public function index($all = false) : Content {
         unset($all);
-        $content = new Content('SFW2\\Download\\Download\\Download');
-        $content->appendJSFile('crud.js');
-# FIXME
-#            $this->ctrl->addJSFile('jquery.fileupload');
-#            $this->ctrl->addJSFile('download');
-
-        $content->assign('entries',  $this->loadEntries());
-        $content->assign('title',    $this->title);
-        $content->assign('divisions', $this->getDivisions());
-        $content->assign('modificationDate', $this->getLastModificationDate());
-        $content->assign('mailaddr', (string)(new EMail($this->config->getVal('project', 'eMailWebMaster'), 'Bescheid.')));
+        $content = new Content('SFW2\\Download\\Download');
+        $content->assign('tableTitle', $this->title);
         return $content;
     }
 
-    protected function loadEntries() {
+    public function read($all = false) {
+        unset($all);
+        $content = new Content('Download');
+
+        $count = (int)filter_input(INPUT_GET, 'count', FILTER_VALIDATE_INT);
+        $start = (int)filter_input(INPUT_GET, 'offset', FILTER_VALIDATE_INT);
+
+        $count = $count ? $count : 500;
+
         $stmt =
             "SELECT `media`.`Id`, `media`.`Name`, `media`.`CreationDate`, " .
             "`media`.`Description`, `media`.`FileType`, `media`.`Autogen`, " .
-            "`media`.`Token`, `division`.`Name` AS `Category`, " .
-            "IF(`media`.`UserId` = '%s' OR '%s', '1', '0') AS `DelAllowed`, " .
-            "`user`.`FirstName`, `user`.`LastName` " .
+            "`media`.`Token`, `user`.`FirstName`, `user`.`LastName` " .
             "FROM `{TABLE_PREFIX}_media` AS `media` " .
-            "LEFT JOIN `{TABLE_PREFIX}_division` AS `division` " .
-            "ON `division`.`Id` = `media`.`DivisionId` " .
             "LEFT JOIN `{TABLE_PREFIX}_user` AS `user` " .
-            "ON `user`.`Id` = `media`.`UserId` ";
+            "ON `user`.`Id` = `media`.`UserId` " .
+            "WHERE `PathId` = '%s' " .
+            "ORDER BY `media`.`Name` DESC " .
+            "LIMIT %s, %s ";
 
-        $rows = $this->database->select($stmt, [$this->user->getUserId(), $this->user->isAdmin() ? '1' : '0']);
+        $rows = $this->database->select($stmt, [$this->pathId, $start, $count]);
+        $cnt = $this->database->selectCount('{TABLE_PREFIX}_media', "WHERE `PathId` = '%s'", [$this->pathId]);
 
         $entries = [];
-
         foreach($rows as $row) {
             $entry = [];
-            $entry['id'         ] = $row['Id'];
-            $entry['description'] = $row['Description'];
-            $entry['filename'   ] = $row['Name'       ];
-            $entry['autoGen'    ] = (bool)$row['Autogen'];
-            $entry['delAllowed' ] = (bool)$row['DelAllowed'];
-            $entry['addFileInfo'] = $this->getAdditionalFileInfo($row);
-            $entry['icon'       ] = '/img/layout/icon_' . $row['FileType'] . '.png'; # TODO Remove
-            $entry['href'       ] = '?do=getFile&token=' . $row['Token'];
-            $entries[$row['Category']][] = $entry;
+            $entry['id'           ] = $row['Id'];
+            $entry['description'  ] = $row['Description'];
+            $entry['filename'     ] = $row['Name'       ];
+            $entry['deleteAllowed'] = !(bool)$row['Autogen'];
+            $entry['addFileInfo'  ] = $this->getAdditionalFileInfo($row);
+            $entry['icon'         ] = '/img/layout/icon_' . $row['FileType'] . '.png'; # TODO Remove
+            $entry['href'         ] = '?do=getFile&token=' . $row['Token'];
+            $entries[] = $entry;
         }
-        return $entries;
+        $content->assign('offset', $start + $count);
+        $content->assign('hasNext', $start + $count < $cnt);
+        $content->assign('entries', $entries);
+        return $content;
     }
 
     public function getFile() : File {
@@ -133,10 +139,10 @@ class Download extends AbstractController {
             $isTempFile = true;
             $class = '\\' . $result['ActionHandler'];
             $handler = new $class($this->database); // TODO: generate object per di-container...
-            $handler->createFile($this->config->getVal('path', 'data'), $result['Name'], $result['Token']);
+            $handler->createFile($this->path, $result['Token'], $result['Name']);
         }
 
-        return new File($this->config->getVal('path', 'data'), $result['Token'], $result['Name'], false);
+        return new File($this->path, $result['Token'], $result['Name'], $isTempFile);
     }
 
     public function delete($all = false) : Content {
@@ -145,79 +151,105 @@ class Download extends AbstractController {
             throw new ResolverException("invalid data given", ResolverException::INVALID_DATA_GIVEN);
         }
 
-        $stmt = "DELETE FROM `{TABLE_PREFIX}_media` WHERE `Id` = '%s' AND `Autogen` = '0'";
+        $stmt =
+            "SELECT `Token` " .
+            "FROM `{TABLE_PREFIX}_media` AS `media` " .
+            "WHERE `Id` = '%s' AND `PathId` = '%s' AND `Autogen` = '0'";
+
+        if(!$all) {
+            $stmt .= "AND `UserId` = '" . $this->database->escape($this->user->getUserId()) . "'";
+        }
+
+        $result = $this->database->selectRow($stmt, [$entryId, $this->pathId]);
+
+        if(empty($result)) {
+            throw new ResolverException("no entry found for id <$entryId>", ResolverException::NO_PERMISSION);
+        }
+
+        if(!unlink($this->path . $result['Token'])) {
+            throw new ResolverException("unlinking for id <$entryId> failed", ResolverException::INVALID_DATA_GIVEN);
+        }
+
+        $stmt = "DELETE FROM `{TABLE_PREFIX}_media` WHERE `Id` = '%s' AND `PathId` = '%s' AND `Autogen` = '0'";
 
         if(!$all) {
             $stmt .= "AND `UserId` = '" . $this->database->escape($this->user->getUserId()) . "'";
         }
 
         if(!$this->database->delete($stmt, [$entryId, $this->pathId])) {
-            throw new ResolverException("no entry found for id [" . $entryId . "]", ResolverException::NO_PERMISSION);
+            throw new ResolverException("no entry found for id <$entryId>", ResolverException::NO_PERMISSION);
         }
 
         return new Content();
     }
 
-    protected function getLastModificationDate() : string {
-        $stmt = "SELECT `media`.`CreationDate` FROM `{TABLE_PREFIX}_media` AS `media` ORDER BY `media`.`CreationDate` DESC";
-        return $this->database->selectSingle($stmt);
-    }
-
-
-
-
-
-
     public function create() {
+        $content = new Content('Download');
 
-        $method = filter_input(INPUT_SERVER, 'REQUEST_METHOD', FILTER_VALIDATE_INT);
+        $validateOnly = filter_input(INPUT_POST, 'validateOnly', FILTER_VALIDATE_BOOLEAN);
 
-        if(strtolower($method) != 'post') {
-            $this->dto->getErrorProvider()->addError(SFW_Error_Provider::INT_ERR, array(), 'dropzone_' . $this->getPageId());
+        $rulset = new Ruleset();
+        $rulset->addNewRules('title', new IsNotEmpty());
+
+        $validator = new Validator($rulset);
+        $values = [];
+
+        $error = $validator->validate($_POST, $values);
+        $content->assignArray($values);
+
+        if(!$error) {
+            $content->setError(true);
         }
 
-        $tmp['title'] = $this->dto->getTitle('title', true);
-        $tmp['section'] = $this->dto->getArrayValue('section', true, $this->sections);
-
-        if(!array_key_exists('userfile', $_FILES) || $_FILES['userfile']['error'] != 0 || $_FILES['userfile']['tmp_name'] == '') {
-            $this->dto->getErrorProvider()->addError(SFW_Error_Provider::NO_FILE, array(), 'dropzone_' . $this->getPageId());
+        if($validateOnly || !$error) {
+            return $content;
         }
 
-        if($this->dto->getErrorProvider()->hasErrors() || $this->dto->getErrorProvider()->hasWarning()) {
-            return false;
-        }
+        $title = $values['title']['value'];
 
-        $file = $_FILES['userfile'];
-        $path = SFW_DATA_PATH . $this->pathId . '/';
-
-        if(!is_dir($path) && !mkdir($path)) {
-            throw new SFW_Exception("could not create path <$path>");
-        }
-
-        $token = md5($file['tmp_name'] . getmypid() . SFW_AuxFunc::getRandomInt());
-
-        if(is_file($path . $token)) {
-            throw new SFW_Exception('file <' . $path . $token .'> allready exists.');
-        }
-
-        if(!move_uploaded_file($file['tmp_name'], $path . $token)) {
-            throw new SFW_Exception('could not move file <' . $file['tmp_name'] . '> to <' . $path . $token .'>');
-        }
+        $token = $this->addFile();
 
         $stmt =
             "INSERT INTO `{TABLE_PREFIX}_media` " .
-            "SET `Token` = '%s', `UserId` = '%s', `Name` = '%s', `Description` = '%s', `DivisionId` = '%s', `CreationDate` = NOW(), " .
-            "`ActionHandler` = '', `Path` = '%s', `FileType` = '%s', `Deleted` = '0', `Autogen` = '0'";
+            "SET `Token` = '%s', `UserId` = '%s', `Name` = '%s', `Description` = '%s', `PathId` = '%s', " .
+            "`CreationDate` = NOW(), `ActionHandler` = '', `FileType` = '%s', `Autogen` = '0'";
 
-        $this->database->insert(
-            $stmt, [$token, $this->user->getUserId(), $file['name'], $tmp['title'], $tmp['section'], $path, $this->getFileType($path . $token)]
+        $id = $this->database->insert(
+            $stmt, [$token, $this->user->getUserId(), $_POST['name'], $title, $this->pathId, $this->getFileType($this->path . $token)]
         );
 
-        $tmp['title'  ] = '';
-        $tmp['section'] = '';
-        $this->dto->setSaveSuccess();
-        #$this->ctrl->updateModificationDate();
-        return true;
+        $content->assign('id',    ['value' => $id]);
+        $content->assign('title', ['value' => $title]);
+
+        return $content;
+    }
+
+    protected function addFile() {
+        if(!isset($_POST['file'])) {
+            throw new ResolverException("file not set", ResolverException::UNKNOWN_ERROR);
+        }
+
+        $chunk = explode(';', $_POST['file']);
+        $type = explode(':', $chunk[0]);
+        $type = $type[1];
+        $data = explode(',', $chunk[1]);
+
+        $token = md5(getmypid() . uniqid('', true) . microtime());
+
+        if(is_file($this->path . $token)) {
+            throw new SFW_Exception("file <$this->path$token> allready exists.");
+        }
+
+
+        if(!is_dir($this->path) && !mkdir($this->path)) {
+            throw new ResolverException("could not create path <$this->path$token>", ResolverException::UNKNOWN_ERROR);
+        }
+
+        if(!file_put_contents($this->path . $token, base64_decode($data[1]))) {
+            throw new ResolverException("could not store file <$this->path$token>", ResolverException::UNKNOWN_ERROR);
+        }
+
+        return $token;
     }
 
     protected function getFileType($file) {

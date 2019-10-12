@@ -21,54 +21,14 @@
  */
 
 ?>
-<h1>Download</h1>
-<p>
-    Auf dieser Seite findest Du Dokumente zum herunterladen.
-</p>
-<?php /*
-<input id="path" type="hidden" name="path" value="/verein/allgemein/download" />
- *
- */ ?>
-<div class="alert alert-success" role="alert">
-    <strong>Anmerkung</strong>
-    <p>
-    Es wird versucht die Seite stets aktuell zu halten. Solltest
-    Du dennoch feststellen, dass ein Dokument veraltet ist oder
-    Fehler enthält dann gib mir bitte <?php echo($this->mailaddr);?>
-    </p>
-</div>
-<?php if(!count($this->entries) && !$this->editable):?>
-<div class="alert alert-info" role="alert">
-    <strong>Anmerkung:</strong><p>Keine Daten vorhanden!</p>
-</div>
-<?php endif; ?>
-<?php foreach($this->entries as $k => $v): ?>
+<div>
 <table class="mt-5 text-nowrap table-sm table table-striped table-hover">
     <thead class="thead-dark">
         <tr>
-            <th scope="col" colspan="2"><?php echo($k); ?></th>
+            <th scope="col" colspan="2"><?php echo($this->tableTitle); ?></th>
             <th scope="col" style="text-align: right">
                 <?php if($this->permission->createAllowed()): ?>
                 <form id="<?php echo($this->getPathSimplified()); ?>" class="noshow">
-                    <div class="row">
-                        <label for="division" class="col-sm-3 col-form-label">Ressort</label>
-                        <div class="col-sm-4">
-                            <select
-                                class="custom-select form-control form-control-sm"
-                                id="division"
-                                name="division"
-                            >
-                                <?php foreach($this->divisions as $id => $name): ?>
-                                <option
-                                    value="<?php echo($id);?>"
-                                    <?php if($name == $k): ?>selected<?php endif;?>
-                                >
-                                    <?php echo($name);?>
-                                </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
                     <div class="row">
                         <label for="title" class="col-sm-3 col-form-label">Beschreibung</label>
                         <div class="col-sm-8">
@@ -83,6 +43,7 @@
                                 value=""
                                 required
                             />
+                            <div class="invalid-feedback"></div>
                         </div>
                     </div>
                     <div class="row">
@@ -90,6 +51,19 @@
                         <div class="col-sm-8 fileupload">
 
                             <!-- FIXME --- 8x ---- 8x --- !-->
+                <div class="custom-file">
+                    <input type="file" class="custom-file-input" id="customFile">
+                    <div class="invalid-feedback"></div>
+                    <label class="custom-file-label" for="customFile">Datei auswählen</label>
+                </div>
+
+                <script>
+                $(document).ready(function () {
+                    bsCustomFileInput.init();
+                });
+                </script>
+
+                            <?php /*
 
                             <div class="dropzone">
                                 <a class="btnRemove noshow" href="#">x</a>
@@ -106,7 +80,7 @@
                                 </div>
                                 <div class="currfile" ></div>
                             </div>
-
+*/ ?>
                             <!-- 8x ---- 8x --- !-->
 
                         </div>
@@ -124,35 +98,6 @@
             </th>
         </tr>
     </thead>
-    <tbody>
-        <?php foreach($v as $item): ?>
-        <tr id="<?php echo($item['id']);?>" title="<?php echo($item['filename']);?> <?php echo($item['addFileInfo']); ?>">
-            <td style="width: 30px;">
-                <img alt="" src="<?php echo($item['icon']);?>" />
-            </td>
-            <td>
-                <a href="<?php echo($item['href']);?>" id="title_<?php echo($item['id']);?>">
-                    <?php echo($item['description']);?>
-                </a>
-            </td>
-            <td style="width: 100px;">
-                <?php if(!$item['autoGen'] && ($this->permission->deleteAllAllowed() || ($this->permission->deleteOwnAllowed() && $item['ownEntry']))): ?>
-                <button
-                    type="button"
-                    class="btn btn-danger btn-sm"
-                    data-toggle="modal"
-                    data-target="#deleteDialogModal"
-                    data-url="<?php echo($this->getCurrentPath()); ?>"
-                    data-item-id="<?php echo($item['id']);?>"
-                    data-form-id="<?php echo($this->getPathSimplified()); ?>"
-                >löschen</button>
-                <?php endif; ?>
-            </td>
-        </tr>
-        <?php endforeach; ?>
+    <tbody class="text-nowrap reload-data" data-url="<?php echo($this->getCurrentPath()); ?>">
     </tbody>
 </table>
-<?php endforeach; ?>
-<div class="modificationDate">
-    Stand: <time pubdate="pubdate"><?php echo($this->modificationDate); ?></time>
-</div>
