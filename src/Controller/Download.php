@@ -69,6 +69,9 @@ class Download extends AbstractController {
         $this->user = $user;
         $this->title = $title;
         $this->path = $config->getVal('path', 'data') . DIRECTORY_SEPARATOR . $this->pathId . DIRECTORY_SEPARATOR;
+        if(!is_dir($this->path) && !mkdir($this->path)) {
+            throw new ResolverException("unable to create dir <{$this->path}>", ResolverException::UNKNOWN_ERROR);
+        }
     }
 
     public function index($all = false) : Content {
