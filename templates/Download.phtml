@@ -21,7 +21,7 @@
  */
 
 ?>
-<div>
+<div style="overflow-x: auto;">
 <table class="mt-5 text-nowrap table-sm table table-striped table-hover">
     <thead class="thead-dark">
         <tr>
@@ -52,7 +52,7 @@
 
                             <!-- FIXME --- 8x ---- 8x --- !-->
                 <div class="custom-file">
-                    <input type="file" class="custom-file-input" id="customFile">
+                    <input data-onlyimage="false" type="file" class="custom-file-input" id="customFile">
                     <div class="invalid-feedback"></div>
                     <label class="custom-file-label" for="customFile">Datei auswählen</label>
                 </div>
@@ -62,6 +62,9 @@
                     bsCustomFileInput.init();
                 });
                 </script>
+                <div class="noshow progress mt-2">
+                    <div id="progressbar-file" class="progress-bar progress-bar-striped bg-success progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                </div>
 
                             <?php /*
 
@@ -101,3 +104,4 @@
     <tbody class="text-nowrap reload-data" data-url="<?php echo($this->getCurrentPath()); ?>">
     </tbody>
 </table>
+</div>
