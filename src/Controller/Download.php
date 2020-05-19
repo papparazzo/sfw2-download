@@ -43,25 +43,10 @@ class Download extends AbstractController {
 
     use GetDivisionTrait;
 
-    /**
-     * @var Database
-     */
-    protected $database;
-
-    /**
-     * @var User
-     */
-    protected $user;
-
-    /**
-     * @var string
-     */
-    protected $title;
-
-    /**
-     * @var string
-     */
-    protected $path;
+    protected Database $database;
+    protected User $user;
+    protected string $title;
+    protected string $path;
 
     public function __construct(int $pathId, Database $database, Config $config, User $user, string $title = '') {
         parent::__construct($pathId);
@@ -74,14 +59,14 @@ class Download extends AbstractController {
         }
     }
 
-    public function index($all = false) : Content {
+    public function index(bool $all = false) : Content {
         unset($all);
         $content = new Content('SFW2\\Download\\Download');
         $content->assign('tableTitle', $this->title);
         return $content;
     }
 
-    public function read($all = false) {
+    public function read(bool $all = false) : Content {
         unset($all);
         $content = new Content('Download');
 
@@ -148,7 +133,7 @@ class Download extends AbstractController {
         return new File($this->path, $result['Token'], $result['Name'], $isTempFile);
     }
 
-    public function delete($all = false) : Content {
+    public function delete(bool $all = false) : Content {
         $entryId = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
         if($entryId === false) {
             throw new ResolverException("invalid data given", ResolverException::INVALID_DATA_GIVEN);
@@ -186,7 +171,7 @@ class Download extends AbstractController {
         return new Content();
     }
 
-    public function create() {
+    public function create() : Content {
         $content = new Content('Download');
 
         $validateOnly = filter_input(INPUT_POST, 'validateOnly', FILTER_VALIDATE_BOOLEAN);
@@ -227,7 +212,7 @@ class Download extends AbstractController {
         return $content;
     }
 
-    protected function addFile() {
+    protected function addFile() : string {
         if(!isset($_POST['file'])) {
             throw new ResolverException("file not set", ResolverException::UNKNOWN_ERROR);
         }
@@ -255,7 +240,7 @@ class Download extends AbstractController {
         return $token;
     }
 
-    protected function getFileType($file) {
+    protected function getFileType($file) : string {
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
 
         $mi = finfo_file($finfo, $file);
@@ -288,7 +273,7 @@ class Download extends AbstractController {
         return 'ukn';
     }
 
-    protected function getAdditionalFileInfo($row) {
+    protected function getAdditionalFileInfo($row) : string {
         $name = substr($row['FirstName'], 0, 1)  . '. ' . $row['LastName'];
 
         if($row['CreationDate'] === null || $row['CreationDate'] == '0000-00-00') {
